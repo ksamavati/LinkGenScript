@@ -1,0 +1,4 @@
+Version 1.2
+
+Pulls keywords from spreadsheet.
+Passes word start and end -- works with 2-word phrases now.

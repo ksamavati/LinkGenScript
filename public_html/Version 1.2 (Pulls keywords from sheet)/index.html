@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html>
+    <head>
+        <script type="text/javascript">
+            // Your Client ID can be retrieved from your project in the Google
+            // Developer Console, https://console.developers.google.com
+            var CLIENT_ID = '403282944595-67m5ltqd7i6grk6s2h1h59ihfsfa2hef.apps.googleusercontent.com';
+            //var CLIENT_ID = '403282944595-67m5ltqd7i6grk6s2h1h59ihfsfa2hef.apps.googleusercontent.com';
+            var SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"];
+            //var SCOPES = ["https://www.googleapis.com/auth/plus.login https://www.googleapis.com/auth/userinfo.email"];
+
+            /**
+             * Initiate auth flow in response to user clicking authorize button.
+             *
+             * @param {Event} event Button click event.
+             */
+            function handleAuthClick(event) {
+                gapi.auth.authorize(
+                        {client_id: CLIENT_ID, scope: SCOPES, immediate: false},
+                        handleAuthResult);
+                return false;
+            }
+
+            /**
+             * Handle response from authorization server.
+             *
+             * @param {Object} authResult Authorization result.
+             */
+            function handleAuthResult(authResult) {
+                var authorizeDiv = document.getElementById('authorize-div');
+                if (authResult && !authResult.error) {
+                    // Hide auth UI, then load client library.
+                    authorizeDiv.style.display = 'none';
+                    loadSheetsApi();
+                } else {
+                    // Show auth UI, allowing the user to initiate authorization by
+                    // clicking authorize button.
+                    authorizeDiv.style.display = 'inline';
+                }
+            }
+
+            /**
+             * Load Sheets API client library.
+             */
+            function loadSheetsApi() {
+                var discoveryUrl =
+                        'https://sheets.googleapis.com/$discovery/rest?version=v4';
+                gapi.client.load(discoveryUrl).then(generateLinks);
+            }
+
+            /**
+             * Check if current user has authorized this application.
+             */
+            function checkAuth() {
+                gapi.auth.authorize(
+                        {
+                            'client_id': CLIENT_ID,
+                            'scope': SCOPES.join(' '),
+                            'immediate': true
+                        }, handleAuthResult);
+            }
+
+            /**
+             * Generate links for articles on verb words:
+             * https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit
+             */
+            var keywordArray;
+            
+            function generateLinks() {
+                var finalHTML = "<ul>";
+                var wordBeginningEnd = [0,0];
+                
+                
+                gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: '1E5f1r5PVcf5kaTjFq0__L9Bnfn82m-4BkZWfGW6BBqc',
+                    range: 'keyphrases!A1:A'
+                }).then(function (response) {
+                    keywordArray = response.result;
+                }, function (response) {
+                    appendPre('Error pulling Generator Sheet: ' + response.result.error.message);
+                });
+                
+                gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: '1npBnALaUhterXmbyp8cBEf5TKXu7O-Mbhzo6UlC90z0',
+                    range: 'Funding!A2:B'
+                }).then(function (response) {
+                    var range = response.result;
+
+                    if (range.values.length > 0) {
+                        //appendPre('Name, Major:');
+                        for (i = 0; i < range.values.length; i++) {
+                            //if (range.[i].length > 1) {
+                                var title = range.values[i][0];
+                                var url = range.values[i][1];
+                                wordBeginningEnd = getFirstKeyword(title);
+                                /*var n = wordEnd - 3;
+                                while (title.charAt(n) !== ' ') {
+                                    n--;
+                                }
+                                var wordBeginning = n + 1; */
+
+                                //Use this for bulleted list:
+                                finalHTML = finalHTML + "<li>" + title.slice(0,wordBeginningEnd[0]) +
+                                        "<a href=\"" + url + "\">" +
+                                        title.slice(wordBeginningEnd[0],wordBeginningEnd[1] + 1) +
+                                        "</a>" + title.slice(wordBeginningEnd[1] + 1,title.length) +
+                                        "</li>";
+                                document.getElementById("generatedLinksGoHere").innerHTML = finalHTML;
+
+                        }
+                        finalHTML = finalHTML + "</ul>";
+                        document.getElementById("generatedLinksGoHere").innerHTML = finalHTML;
+                        //document.getElementById("generatedLinksGoHere").innerHTML = finalHTML;
+                    } else {
+                        appendPre('No data found.');
+                        finalHTML = finalHTML + "No data found.";
+                    }
+                }, function (response) {
+                    appendPre('Error pulling Generator Sheet: ' + response.result.error.message);
+                });
+                
+
+
+                //}, function (response) {
+                //    appendPre('Error: ' + response.result.er ror.message);
+                //});
+                /*finalHTML = finalHTML + "</ul>";
+                document.getElementById("generatedLinksGoHere").innerHTML = finalHTML;*/
+            }
+            
+            function getFirstKeyword(title) {
+                //var keywordArray = ["raises", "raise", "raised", "takes in", "take in", "took in", "closes", "closed", "secures", "secured", "lands", "landed", "invests", "invest", "invested", "gets", "get", "got", "picks up", "pick up", "picked up", "buys", "buy", "bought", "acquires", "acquire", "acquired", "offers", "offered", "reports", "reported", "aims", "aimed", "bring in", "brings in", "brought in", "bags", "bagged", "receives", "receive", "received", "reaches", "reach", "reached", "attracts", "attract", "attracted", "launches", "launch", "launched", "signals", "signalled", "nets", "netted", "holds", "held", "expands", "expanded", "starts", "started", "initiates", "initiate", "initiated", "begins", "begin", "began", "explores", "explore", "explored", "replaces", "replace", "replaced", "tests", "tested", "pours", "pour", "poured", "plans", "planned", "intends", "intended", "announces", "announce", "builds", "build", "built", "push", "pushes", "pushed", "says", "say", "said", "probes", "probed", "funded", "inject", "injects", "injected", "leaves", "leave", "left", "prompt", "prompts", "prompted", "team up", "teamed up", "teams up", "hit", "hits", "was hit", "thrive", "thrives", "thrived", "prospers", "prosper", "prospered", "enter", "enters", "entered", "settle", "settles", "settled", "takes over", "take over", "took over", "dreams", "dreamed", "produce", "produces", "produced", "fuses", "fused", "welcome", "welcomes", "welcomed", "beef up", "beefs up", "beefed up", "stop", "stops", "stopped", "ends", "ended", "finish", "finishes", "finished", "run out", "runs out", "ran out", "makes", "make", "made", "want", "wants", "wanted", "talk", "talks", "talked", "debates", "debated", "outraged", "appeal", "appeals", "appealed", "charge", "charges", "charged", "sell", "sells", "sold", "reply", "replies", "replied", "work", "works", "worked", "searches", "is searching", "is looking for", "is hoping", "is planning", "is aiming", "is launching", "is raising", "is investing", "lend", "lends", "loans", "loaned", "spend", "spends", "spent", "put in", "puts in", "advances", "increase", "increases", "increased", "decrease", "decreases", "decreased", "reduce", "reduces", "reduced"];
+                var indexArray = [];
+                var phraseFound = false;
+                var firstWordLocation = 1000;
+                var wordEnd;
+                var wordBeginning;
+
+                for (n = 0; n < keywordArray.values.length; n++) {
+                    if (title.indexOf(" " + keywordArray.values[n][0] + " ") > 0) {
+                        indexArray.push(title.indexOf(" " + keywordArray.values[n][0] + " ") + 1 );
+                        phraseFound = true;
+                    } else {  indexArray.push(1000); }
+                }
+
+                if (phraseFound === false) {
+                    wordEnd = getWordEndS(title,0);
+                    var n = wordEnd;
+                    while (title.charAt(n) !== ' ') {
+                        n--;
+                    }
+                    var wordBeginning = n + 1;
+                    return [wordBeginning, wordEnd];
+                }
+                else {
+                var firstWordArrayIndex;
+
+                    for (x = 0; x < indexArray.length; x++) {
+                        if (indexArray[x] < firstWordLocation) {
+                            firstWordLocation = indexArray[x];
+                            firstWordArrayIndex = x;
+                        }
+                    }
+                }
+            /*var wordEnd = (firstWordLocation + keywordArray[firstWordArrayIndex].length - 1);
+            while (title.charAt(wordEnd + 1) !== ' ') {
+                wordEnd++;
+            }
+            return wordEnd;
+            */
+            wordEnd = firstWordLocation + keywordArray.values[firstWordArrayIndex][0].length - 1;
+            
+            return [firstWordLocation, wordEnd];
+            }
+            
+            
+            /**
+             * Get word ending in S
+             *
+             * @param {string} title Full article Title string.
+             * @param {integer} startSearchAt index to start searching.
+             */
+            function getWordEndS(title,startSearchAt) {
+                                var wordEnd = "";
+                                //if word ending in S is found
+                                if (title.indexOf("s ",startSearchAt) > 0) {
+                                    //if there is an apostrophe right before the 's'
+                                    if (title.charAt(title.indexOf("s ",startSearchAt) - 1) === "'"){
+                                        //invalid word, try again
+                                        wordEnd = getWordEndS(title,title.indexOf("s ",startSearchAt)+1);
+                                        return wordEnd;
+                                    } else {
+                                        //word ending is valid, set word end
+                                        wordEnd = title.indexOf("s ",startSearchAt);
+                                    }
+                                    var n = wordEnd;
+                                    //loop until word beginning is found (spacebar character)
+                                    while (title.charAt(n) !== ' ') {                                        
+                                        //IF first word in string OR word is capitalized
+                                        if ((n === 0) || (title.charAt(n) === title.charAt(n).toUpperCase())){
+                                            //invalid word, try again
+                                            wordEnd = getWordEndS(title,wordEnd+1);
+                                            return wordEnd;
+                                        }
+                                        n--;
+                                    }
+                                    
+                                    //if word is less than 4 characters long, skip
+                                    if((n+4) > wordEnd) {
+                                        //invalid word, try again
+                                        wordEnd = getWordEndS(title,title.indexOf("s ",startSearchAt)+1);
+                                    }
+                                } else {
+                                    wordEnd = getWordEndING(title,0);
+                                }
+                                return wordEnd;
+            }
+            
+           /**
+             * Get word ending in ING
+             *
+             * @param {string} title Full article Title string.
+             * @param {integer} startSearchAt index to start searching.
+             */
+            function getWordEndING(title,startSearchAt) {
+                                var wordEnd = "";
+                                //if "ing " found
+                                if (title.indexOf("ing ",startSearchAt) > 0) {
+                                    //wordEnd = title.indexOf("ing ",startSearchAt,title.indexOf("ing ",startSearchAt)+4);
+                                    wordEnd = title.indexOf("ing ",startSearchAt)+2;
+                                    var n = wordEnd;
+                                    while (title.charAt(n) !== ' ') {
+                                        //if first word or word is capitalized
+                                        if ((n === 0) || (title.charAt(n) === title.charAt(n).toUpperCase())){
+                                            wordEnd = getWordEndING(title,wordEnd+1);
+                                            return wordEnd;
+                                        }
+                                        n--;
+                                    }
+                                    
+                                    //if word is less than 4 characters long, skip
+                                    if((n+4) > wordEnd) {
+                                        //invalid word, try again
+                                        wordEnd = getWordEndING(title,title.indexOf("ing ",startSearchAt)+1);
+                                    }
+                                } else { //no "ing " found
+                                    wordEnd = getThirdWord(title);
+                                }
+                                return wordEnd;
+            }
+            
+            /**
+             * Get 3rd Word
+             *
+             * @param {string} title Full article Title string.
+             */
+            function getThirdWord(title) {
+            var wordEnd = "";
+                             
+            //select the last character of the 3rd word:
+            wordEnd = title.indexOf(" ",title.indexOf(" ",title.indexOf(" ")+1)+1) - 1;
+            
+            //if title is less than 4 words, link the last word.
+            if (wordEnd < 0) {
+                wordEnd = title.length;
+            }
+            return wordEnd;
+            }
+            
+            /**
+             * Append a pre element to the body containing the given message
+             * as its text node.
+             *
+             * @param {string} message Text to be placed in pre element.
+             */
+            function appendPre(message) {
+                var pre = document.getElementById('output');
+                var textContent = document.createTextNode(message + '\n');
+                pre.appendChild(textContent);
+            }
+
+        </script>
+        <script src="https://apis.google.com/js/client.js?onload=checkAuth">
+        </script>
+        <title>Link Generator</title>
+    </head>
+    <body>
+        <span>Authorize Link Generator access to Google Sheets:</span><br><br>
+        <!--Button for the user to click to initiate auth sequence -->
+        <button id="authorize-button" onclick="handleAuthClick(event)">
+            Authorize
+        </button>
+        <br><br>
+
+        <button id="generate-button" onclick="loadSheetsApi()">
+            Generate Links
+        </button>
+
+        <br><br>
+        <p id="generatedLinksGoHere"></p>
+
+        <pre id="output"></pre>
+    </body>
+</html>
